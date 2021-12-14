@@ -56,11 +56,12 @@ void setup() {
   // Наприжение на выходе одного измоторов двигателя (в разработке)
   edet = analogRead(dat);
 
+  // стоковое колличество "яркости" в комнате
   dark = analogRead(fotoRez)+10;
 
   // Serial.println(dark);
+
   // если слишком ярко, будет пищать спикер
-  
   if(dark < maxBrightness){
     while(true){
       digitalWrite(signa,HIGH);
@@ -83,12 +84,9 @@ void setup() {
 
 uint32_t k = millis(), vrema = millis(), ism = 0, ii = 0, trm12 = 0, last1 = 0, last2 = 0;
 
-int ism1 = 0;
-int ism2 = 0;
-int ism3 = 0;
-
 uint32_t trm13 = 0;
 
+// переделать
 bool backFlak = false, forvardFlak = false, leftFlak = false, rightFlak = false, stopFlak = true, startFlak = true;
 
 void loop() {
@@ -200,7 +198,8 @@ void loop() {
         IrReceiver.printIRResultShort(&Serial);
 
         IrReceiver.resume(); // Enable receiving of the next value
-      
+
+        // подписать все кнопки пульта
         if (IrReceiver.decodedIRData.command == 0xC) {
             trm12 = millis();
             backFlak = true;
@@ -233,8 +232,7 @@ if (stopFlak){
     leftWheel.speed(50);
     startFlak = false;
   }
-  //forvard(leftWheel, rightWheel);
-  // Крутим колёса
+  
   if (backFlak){
     if (millis() - trm12 <= 100){
       rightWheel.speed(60);
@@ -281,18 +279,10 @@ if (stopFlak){
 
   }
   
-  
+  // Крутим колёса
   rightWheel.go();
   leftWheel.go(); 
 }
-
-
-
-
-
-
-
-
 
 void forvard(){
   rightWheel.derection(LOW);
