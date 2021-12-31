@@ -7,7 +7,7 @@
 // библиотека управления ИК датчиком
 #include <IRremote.hpp>
 
-// мои собственные классы, для облегчения работы и улучшения кода
+// мои собственные классы, для облегчения работы с кодом
 #include "button.h"
 #include "motor.h"
 
@@ -29,15 +29,15 @@ int dark;
 int maxBrightness = 40;
 
 //  я хз
-bool fl = true, povFL = true;
+bool fl = true, povFL = true,flfl = false;
 
 //  
 uint32_t pov = 0;
 
-uint32_t dtime = -1;
+uint32_t dtime = -1, ttime = 0;
 
 // Порты датчиков
-uint8_t fotoRez = A5, signa = 13, dat = A1;
+uint8_t fotoRez = A5, signa = 13, dat = A1, tax1 = 10, tax2 = 8;
 
 int edet = 0;
 
@@ -46,35 +46,30 @@ void setup() {
   Serial.begin(115200);
 
   // Запуск отбработчика ик сигнала
-  IrReceiver.begin(IR_RECEIVE_PIN, ENABLE_LED_FEEDBACK, USE_DEFAULT_FEEDBACK_LED_PIN);
+  IrReceiver.begin(IR_RECEIVE_PIN, false, USE_DEFAULT_FEEDBACK_LED_PIN);
   
   // Бинд всех портов  
   pinMode(fotoRez,INPUT_PULLUP);
   pinMode(signa, OUTPUT);
   pinMode(dat,INPUT_PULLUP);
+  pinMode(tax1, INPUT_PULLUP);
+  pinMode(tax2, INPUT_PULLUP);
   
-  // Наприжение на выходе одного измоторов двигателя (в разработке)
+  // Наприжение на выходе одного измоторов двигателя (в разработке) заброшено
   edet = analogRead(dat);
 
   // стоковое колличество "яркости" в комнате
-  dark = analogRead(fotoRez)+10;
+  dark = analogRead(fotoRez) + 10;
 
   // Serial.println(dark);
 
   // если слишком ярко, будет пищать спикер
   if(dark < maxBrightness){
     while(true){
-      digitalWrite(signa,HIGH);
-      delay(250);
-      digitalWrite(signa,LOW);
-      delay(250);
-      digitalWrite(signa,HIGH);
-      delay(250);
-      digitalWrite(signa,LOW);
-      delay(250);
-      digitalWrite(signa,HIGH);
-      delay(250);
-      digitalWrite(signa,LOW);
+      for(int i = 1; i <= 6; i++){
+        digitalWrite(signa,bool(i/2));
+        delay(250);
+      }
       delay(3000);
     }
   }
@@ -82,12 +77,12 @@ void setup() {
   //digitalWrite(signa,LOW);
 }
 
-uint32_t k = millis(), vrema = millis(), ism = 0, ii = 0, trm12 = 0, last1 = 0, last2 = 0;
+uint32_t k = millis(), vrema = millis(), ism = 0, ii = 0, trm12 = 0, last1 = 0, last2 = 0, t =0;
 
 uint32_t trm13 = 0;
 
 // переделать
-bool backFlak = false, forvardFlak = false, leftFlak = false, rightFlak = false, stopFlak = true, startFlak = true;
+bool backFlak = false, forvardFlak = false, leftFlak = false, rightFlak = false, stopFlak = true, startFlak = true, help = false;;
 
 void loop() {
 
@@ -187,6 +182,26 @@ void loop() {
       leftWheel.speed(0);
   } 
 
+bool rig = digitalRead(tax1), ta2 = digitalRead(tax2); 
+  if (rig){
+    flfl = true;
+  }else{
+    if (flfl){
+      flfl = false;
+      Serial.println(60000/(millis()-ttime));
+    ttime = millis();
+    }
+  }
+  
+if (millis()-ttime > 500){
+      t = millis();
+      help = true;
+      ttime = millis();
+}
+
+if (millis() - t < 100){
+  back();
+}
   // Пищалка пищит пол секунды и перестаёт
   if (millis()-dtime > 500){
     digitalWrite(signa,LOW);
@@ -195,7 +210,7 @@ void loop() {
   // Работа с ИК датчиком
   if (IrReceiver.decode()) {
 
-        IrReceiver.printIRResultShort(&Serial);
+        //IrReceiver.printIRResultShort(&Serial);
 
         IrReceiver.resume(); // Enable receiving of the next value
 
@@ -283,6 +298,8 @@ if (stopFlak){
   rightWheel.go();
   leftWheel.go(); 
 }
+
+
 
 void forvard(){
   rightWheel.derection(LOW);
