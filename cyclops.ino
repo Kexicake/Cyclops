@@ -34,11 +34,11 @@ bool fl = true, povFL = true,flfl = false;
 //  
 uint32_t pov = 0;
 
-uint32_t dtime = -1, ttime = 0;
+uint32_t speakerTime = -1, ttime = 0;
 
 // Определение портов датчиков
 #define fotoRez A5
-#define signa 13
+#define speaker 13
 #define dat A1
 #define tax1 10
 #define tax2 8
@@ -55,7 +55,7 @@ void setup() {
   
   // Бинд всех портов  
   pinMode(fotoRez,INPUT_PULLUP);
-  pinMode(signa, OUTPUT);
+  pinMode(speaker, OUTPUT);
   pinMode(dat,INPUT_PULLUP);
   pinMode(tax1, INPUT_PULLUP);
   pinMode(tax2, INPUT_PULLUP);
@@ -69,13 +69,13 @@ void setup() {
   if(dark < maxBrightness){
     while(true){
       for(int i = 1; i <= 6; i++){
-        digitalWrite(signa,bool(i/2));
+        digitalWrite(speaker,bool(i/2));
         delay(250);
       }
       delay(3000);
     }
   }
-  //digitalWrite(signa,LOW);
+  //digitalWrite(speaker,LOW);
 }
 
 uint32_t k = millis(), vrema = millis(), ism = 0, trm12 = 0, t =0;
@@ -120,8 +120,8 @@ void loop() {
           leftWheel.speed(0);
           rightWheel.go();
           leftWheel.go(); 
-          digitalWrite(signa,HIGH);
-          dtime = millis();
+          digitalWrite(speaker,HIGH);
+          speakerTime = millis();
         }
         
         // Если темно - крутимся, чтобы найти свет
@@ -169,8 +169,8 @@ if (millis() - t < 100){
   back();
 }
   // Пищалка пищит пол секунды и перестаёт
-  if (millis() - dtime > 500){
-    digitalWrite(signa,LOW);
+  if (millis() - speakerTime > 500){
+    digitalWrite(speaker,LOW);
   }
   
   // Работа с ИК датчиком
