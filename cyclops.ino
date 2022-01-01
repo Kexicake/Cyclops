@@ -46,6 +46,7 @@ uint32_t dtime = -1, ttime = 0;
 int edet = 0;
 
 void setup() {
+
   // Открытие серийного порта
   Serial.begin(115200);
 
@@ -74,7 +75,6 @@ void setup() {
       delay(3000);
     }
   }
-
   //digitalWrite(signa,LOW);
 }
 
