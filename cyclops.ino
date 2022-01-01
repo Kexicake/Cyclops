@@ -16,14 +16,12 @@ int lastAA = -1;
 int dark;
 
 //  я хз
-bool fl = true, povFL = true,flfl = false;
+bool fl = true, povFL = true, flfl = false;
 
 //  
-uint32_t pov = 0;
+uint32_t counterTurnovers = 0;
 
 uint32_t speakerTime = -1, ttime = 0;
-
-int edet = 0;
 
 void setup() {
 
@@ -66,9 +64,6 @@ uint32_t trm13 = 0;
 bool backFlak = false, forvardFlak = false, leftFlak = false, rightFlak = false, stopFlak = true, startFlak = true, help = false;;
 
 void loop() {
-
-  //Serial.println(analogRead(dat));
-
   // Яркость вокруг в данный момент времени
   int AA = analogRead(fotoRez);
 
@@ -84,7 +79,7 @@ void loop() {
         forvard();
         
         if (povFL){
-            pov++;
+            counterTurnovers++;
             povFL = false;
           }
           
@@ -103,15 +98,15 @@ void loop() {
         }
         
         // Если темно - крутимся, чтобы найти свет
-        if(pov % 4 == 1 || pov % 4 == 2){
+        if(counterTurnovers % 4 == 1 || counterTurnovers % 4 == 2){
           leftG();
           povFL = true;
-        }else if (pov % 4 == 3 || pov % 4 == 0){
+        }else if (counterTurnovers % 4 == 3 || counterTurnovers % 4 == 0){
           rightG();
           povFL = true;
         }
-        if (pov == 4){
-          pov = 0;
+        if (counterTurnovers == 4){
+          counterTurnovers = 0;
         }
         rightWheel.speed(60);
         leftWheel.speed(60);
@@ -135,7 +130,7 @@ if (rig){
     if (flfl){
       flfl = false;
       Serial.println(60000/(millis()-ttime));
-    ttime = millis();
+      ttime = millis();
     }
 }
 
