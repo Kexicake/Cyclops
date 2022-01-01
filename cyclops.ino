@@ -1,21 +1,11 @@
-// Кодировка данных, принимаемых ИК датчиком
-#define DECODE_NEC 
-#define IR_RECEIVE_PIN 2
-#define FEEDBACK_LED_PIN 13
+// Определения всех портов находятся в отдельном файле
+#include "Definitions.h"
 
 // библиотека управления ИК датчиком
 #include <IRremote.hpp>
 
-// мои собственные классы, для облегчения работы с кодом
-// #include "button.h"
+// Небольшой класс, для удобной работы с двигателями
 #include "motor.h"
-
-
-// Тестовое управдение двигателями посредством 4-х кнопок
-// button up(11); 
-// button right(10);
-// button left(12);
-// button down(13);
 
 motor rightWheel(1);// low - вперёд high - назад
 motor leftWheel(0);// low - назад high - вперёд
@@ -25,9 +15,6 @@ int lastAA = -1;
 // Общее значение яркости в помещении на момент включения
 int dark;
 
-// Значение "яркости" при котором робот останавливается
-#define maxBrightness 40
-
 //  я хз
 bool fl = true, povFL = true,flfl = false;
 
@@ -35,13 +22,6 @@ bool fl = true, povFL = true,flfl = false;
 uint32_t pov = 0;
 
 uint32_t speakerTime = -1, ttime = 0;
-
-// Определение портов датчиков
-#define fotoRez A5
-#define speaker 13
-#define dat A1
-#define tax1 10
-#define tax2 8
 
 int edet = 0;
 
@@ -114,8 +94,6 @@ void loop() {
       }else{
         //Serial.println("non"); 
         if(!fl){
-          
-          
           rightWheel.speed(0);
           leftWheel.speed(0);
           rightWheel.go();
@@ -148,17 +126,20 @@ void loop() {
       leftWheel.speed(0);
   } 
 
+// Кусок код отвечающий за работу тахометров
 bool rig = digitalRead(tax1), ta2 = digitalRead(tax2); 
-  if (rig){
+
+if (rig){
     flfl = true;
-  }else{
+}else{
     if (flfl){
       flfl = false;
       Serial.println(60000/(millis()-ttime));
     ttime = millis();
     }
-  }
-  
+}
+
+// Если колесо не крутится, едем назад 
 if (millis()-ttime > 500){
       t = millis();
       help = true;
@@ -168,6 +149,7 @@ if (millis()-ttime > 500){
 if (millis() - t < 100){
   back();
 }
+
   // Пищалка пищит пол секунды и перестаёт
   if (millis() - speakerTime > 500){
     digitalWrite(speaker,LOW);
@@ -178,9 +160,8 @@ if (millis() - t < 100){
 
         //IrReceiver.printIRResultShort(&Serial);
 
-        IrReceiver.resume(); // Enable receiving of the next value
+        IrReceiver.resume(); 
         
-        // подписать все кнопки пульта
         if (IrReceiver.decodedIRData.command == 0xC) {
             trm12 = millis();
             backFlak = true;
