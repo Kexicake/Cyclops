@@ -30,7 +30,7 @@ class motor {
         pinMode(_speedControl,OUTPUT);
       }
     }
-
+    
     void speed(int speed){
       _speed = speed;
     }

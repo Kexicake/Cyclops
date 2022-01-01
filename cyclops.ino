@@ -1,15 +1,15 @@
 // Кодировка данных, принимаемых ИК датчиком
 #define DECODE_NEC 
-
-// Основные определения ножные для работы ИК датчика (переписать)
-#include "PinDefinitionsAndMore.h"
+#define IR_RECEIVE_PIN 2
+#define FEEDBACK_LED_PIN 13
 
 // библиотека управления ИК датчиком
 #include <IRremote.hpp>
 
 // мои собственные классы, для облегчения работы с кодом
-#include "button.h"
+// #include "button.h"
 #include "motor.h"
+
 
 // Тестовое управдение двигателями посредством 4-х кнопок
 // button up(11); 
@@ -25,8 +25,8 @@ int lastAA = -1;
 // Общее значение яркости в помещении на момент включения
 int dark;
 
-// Значение "яркости" при котором роот останавливается
-int maxBrightness = 40;
+// Значение "яркости" при котором робот останавливается
+#define maxBrightness 40
 
 //  я хз
 bool fl = true, povFL = true,flfl = false;
@@ -36,8 +36,12 @@ uint32_t pov = 0;
 
 uint32_t dtime = -1, ttime = 0;
 
-// Порты датчиков
-uint8_t fotoRez = A5, signa = 13, dat = A1, tax1 = 10, tax2 = 8;
+// Определение портов датчиков
+#define fotoRez A5
+#define signa 13
+#define dat A1
+#define tax1 10
+#define tax2 8
 
 int edet = 0;
 
@@ -46,7 +50,7 @@ void setup() {
   Serial.begin(115200);
 
   // Запуск отбработчика ик сигнала
-  IrReceiver.begin(IR_RECEIVE_PIN, false, USE_DEFAULT_FEEDBACK_LED_PIN);
+  IrReceiver.begin(IR_RECEIVE_PIN, DISABLE_LED_FEEDBACK, FEEDBACK_LED_PIN);
   
   // Бинд всех портов  
   pinMode(fotoRez,INPUT_PULLUP);
@@ -54,9 +58,6 @@ void setup() {
   pinMode(dat,INPUT_PULLUP);
   pinMode(tax1, INPUT_PULLUP);
   pinMode(tax2, INPUT_PULLUP);
-  
-  // Наприжение на выходе одного измоторов двигателя (в разработке) заброшено
-  edet = analogRead(dat);
 
   // стоковое колличество "яркости" в комнате
   dark = analogRead(fotoRez) + 10;
@@ -77,7 +78,7 @@ void setup() {
   //digitalWrite(signa,LOW);
 }
 
-uint32_t k = millis(), vrema = millis(), ism = 0, ii = 0, trm12 = 0, last1 = 0, last2 = 0, t =0;
+uint32_t k = millis(), vrema = millis(), ism = 0, trm12 = 0, t =0;
 
 uint32_t trm13 = 0;
 
@@ -91,18 +92,6 @@ void loop() {
   // Яркость вокруг в данный момент времени
   int AA = analogRead(fotoRez);
 
-  // // Изменение падения наприжения на моторчике, чтобы определить стоит робот или едет. (В РАЗРАБОТКЕ)
-  // if ( millis()-k <= 500){
-  //   ii+=1;
-  //   ism += analogRead(dat);
-  // }else{
-  //   int vazna = ism/ii;
-  //   Serial.println(vazna);
-  //   ii = 0;
-  //   ism = 0;  
-  //   k= millis();
-  // }
-
   // Работаем со значениями только с dAA большем 7
   if (AA != lastAA && abs(AA - lastAA) > 7){
 
@@ -111,32 +100,9 @@ void loop() {
     
        
       if (dark > AA){
-        //Serial.println("pass");
-        
-        // Часть кода, которая отвечала за предотвражения "проскальзывания" от света
-        // if(fl){
-        //   uint32_t n = millis();
-          
-        //   // чтобы он немного остановил своё вращение использую цикл 
-        //   while (millis() - n < 70){
-
-        //     if (pov){
-        //       rightG();
-        //     }else{
-        //       leftG();
-        //     }
-            
-        //     rightWheel.speed(60);
-        //     leftWheel.speed(60);
-        //     rightWheel.go();
-        //     leftWheel.go(); 
-        //   }
-          
-        //   fl = false;
-        // }
-
         // Если светло - едем к свету
         forvard();
+        
         if (povFL){
             pov++;
             povFL = false;
@@ -166,7 +132,7 @@ void loop() {
           rightG();
           povFL = true;
         }
-        if (pov == 100000){
+        if (pov == 4){
           pov = 0;
         }
         rightWheel.speed(60);
@@ -176,7 +142,7 @@ void loop() {
     
   }
 
-  // Если "яркость" на придельном значении и меньшее мы будем стоять (Банально чтобы не снести лампочку) 
+  // Если "яркость" на придельном значении и больше мы будем стоять (Банально чтобы не снести лампочку) 
   if (AA < maxBrightness){
       rightWheel.speed(0);
       leftWheel.speed(0);
@@ -203,7 +169,7 @@ if (millis() - t < 100){
   back();
 }
   // Пищалка пищит пол секунды и перестаёт
-  if (millis()-dtime > 500){
+  if (millis() - dtime > 500){
     digitalWrite(signa,LOW);
   }
   
@@ -213,7 +179,7 @@ if (millis() - t < 100){
         //IrReceiver.printIRResultShort(&Serial);
 
         IrReceiver.resume(); // Enable receiving of the next value
-
+        
         // подписать все кнопки пульта
         if (IrReceiver.decodedIRData.command == 0xC) {
             trm12 = millis();
@@ -237,12 +203,11 @@ if (millis() - t < 100){
             
         }
     }
-
 if (stopFlak){
-    rightWheel.speed(0);
-    leftWheel.speed(0);
     startFlak = true;
-  } else if(startFlak){
+  } 
+
+else if(startFlak){
     rightWheel.speed(50);
     leftWheel.speed(50);
     startFlak = false;
@@ -259,6 +224,7 @@ if (stopFlak){
     }
     
   }
+  
   if (forvardFlak){
     if (millis() - trm12 <= 100){
       rightWheel.speed(60);
@@ -270,6 +236,7 @@ if (stopFlak){
     }
 
   }
+  
   if (leftFlak){
     if (millis() - trm12 <= 100){
       rightWheel.speed(60);
