@@ -181,18 +181,20 @@ if (millis() - t < 100){
     }
 if (stopFlak){
     startFlak = true;
+    rightWheel.speed(0);
+    leftWheel.speed(0);
   } 
 
 else if(startFlak){
-    rightWheel.speed(50);
-    leftWheel.speed(50);
+    rightWheel.speed(100);
+    leftWheel.speed(100);
     startFlak = false;
   }
   
   if (backFlak){
     if (millis() - trm12 <= 100){
-      rightWheel.speed(60);
-      leftWheel.speed(60);
+      rightWheel.speed(100);
+      leftWheel.speed(100);
       back();
     }else{
       forvard();
@@ -203,8 +205,8 @@ else if(startFlak){
   
   if (forvardFlak){
     if (millis() - trm12 <= 100){
-      rightWheel.speed(60);
-      leftWheel.speed(60);
+      rightWheel.speed(100);
+      leftWheel.speed(100);
       forvard();
     }else{
       forvard();
@@ -215,8 +217,8 @@ else if(startFlak){
   
   if (leftFlak){
     if (millis() - trm12 <= 100){
-      rightWheel.speed(60);
-      leftWheel.speed(60);
+      rightWheel.speed(100);
+      leftWheel.speed(100);
       leftG();
     }else{
       forvard();
@@ -227,8 +229,8 @@ else if(startFlak){
 
   if (rightFlak){
     if (millis() - trm12 <= 100){
-      rightWheel.speed(60);
-      leftWheel.speed(60);
+      rightWheel.speed(100);
+      leftWheel.speed(100);
       rightG();
     }else{
       forvard();
