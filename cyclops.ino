@@ -1,5 +1,21 @@
 // Определения всех портов находятся в отдельном файле
-#include "Definitions.h"
+// #include "definitions.h"
+// Проблема с подключаемым файлом
+
+// Кодировка данных, принимаемых ИК датчиком
+#define DECODE_NEC 
+#define IR_RECEIVE_PIN 2
+#define FEEDBACK_LED_PIN 0
+
+// Определение портов датчиков
+#define fotoRez A3
+#define speaker A4
+#define dat A1
+#define tax1 1
+#define tax2 8
+
+// Значение "яркости" при котором робот останавливается
+#define maxBrightness 40
 
 // библиотека управления ИК датчиком (Ссылку надо указать)
 #include <IRremote.hpp>
@@ -15,7 +31,6 @@ motor leftWheel(0);// low - назад high - вперёд
 #include "RF24.h"         // ещё библиотека радиомодуля
 
 RF24 radio(9, 10); // "создать" модуль на пинах 9 и 10 Для Уно
-//RF24 radio(9,53); // для Меги
 
 byte address[][6] = {"1Node", "2Node", "3Node", "4Node", "5Node", "6Node"}; //возможные номера труб
 
@@ -27,7 +42,7 @@ int lastAA = -1;
 int dark;
 
 //  я хз
-bool fl = true, povFL = true, flfl = false, fl2 = true;
+bool fl = true, povFL = true, flfl = false, fl2 = true, speakerWork = true;
 
 //  
 uint32_t counterTurnovers = 0;
@@ -52,10 +67,10 @@ if (!radio.begin()) {
   radio.openReadingPipe(1, address[1]);
 
   radio.powerUp();        // начать работу
-  radio.printDetails();
+  
 
   radio.setChannel(0x65);
-
+  radio.printDetails();
   radio.stopListening();
 
   // Запуск отбработчика ик сигнала
@@ -69,7 +84,7 @@ if (!radio.begin()) {
   pinMode(tax1, INPUT_PULLUP);
   pinMode(tax2, INPUT_PULLUP);
 
-  // стоковое колличество "яркости" в комнате
+  // стоковое колличество "яркости" в комнате (чем больше значение, тем дальше он заедет в темноту)
   dark = analogRead(fotoRez) + 10;
 
   // Serial.println(dark);
@@ -90,9 +105,9 @@ if (!radio.begin()) {
 uint32_t k = millis(), vrema = millis(), ism = 0, trm12 = 0, t =0;
 
 uint32_t trm13 = 0;
-
+int speed = 100;
 // переделать
-bool backFlak = false, forvardFlak = false, leftFlak = false, rightFlak = false, stopFlak = true, startFlak = true, help = false;;
+bool backFlak = false, forvardFlak = false, leftFlak = false, rightFlak = false, stopFlak = true, startFlak = true;
 void loop() {
 
   // Яркость вокруг в данный момент времени
@@ -116,8 +131,8 @@ void loop() {
 
         fl = false;
         
-        rightWheel.speed(100);
-        leftWheel.speed(100);
+        rightWheel.speed(speed);
+        leftWheel.speed(speed);
         
       }else{
         //Serial.println("non"); 
@@ -126,7 +141,10 @@ void loop() {
           leftWheel.speed(0);
           rightWheel.go();
           leftWheel.go(); 
-          digitalWrite(speaker,HIGH);
+          if (speakerWork){
+            digitalWrite(speaker,HIGH);
+          }
+          
           speakerTime = millis();
         // }
         
@@ -141,8 +159,8 @@ void loop() {
         if (counterTurnovers == 4){
           counterTurnovers = 0;
         }
-        rightWheel.speed(60);
-        leftWheel.speed(60);
+        rightWheel.speed(speed - 40);
+        leftWheel.speed(speed - 40);
         fl = true;
       }
     
@@ -155,69 +173,100 @@ void loop() {
   } 
 
 // Кусок код отвечающий за работу тахометров
-bool rig = digitalRead(tax1), ta2 = digitalRead(tax2); 
+bool ta1 = digitalRead(tax1), ta2 = digitalRead(tax2); 
 
-if (rig){
+if (ta1){
     flfl = true;
 }else{
     if (flfl){
       flfl = false;
       byte ob = 15000/(millis()-ttime);
-      if(radio.write(&ob, 1)){
-        Serial.println("pass");
-      }
-      Serial.println(ob);
+      radio.write(&ob, 1);
       ttime = millis();
     }
 }
 
-// Если колесо не крутится, едем назад 
-if (millis()-ttime > 400){
+// Если колесо не крутится, едем назад ~256мс надо чтобы определить крутится ли колесо
+if (millis() - ttime > 300){
       t = millis();
-      help = true;
       ttime = millis();
 }
-
-if (millis() - t < 250){
-  back();
-}
-if (millis() - t < 500 && millis() - t > 250){
-  leftG();
-}
-  // Пищалка пищит пол секунды и перестаёт
-  if (millis() - speakerTime > 100){
-    digitalWrite(speaker,LOW);
+// ОБработка остановки колёс
+if (millis() - t < 500){
+  if (millis() - t > 250){
+    leftG();
+  }else{
+    back();
   } 
+}
+
+  // Пищалка пищит 1/10 секунды и перестаёт
+  if ((millis() - speakerTime) >= 100 && speakerWork){
+    digitalWrite(speaker,LOW);
+  } else if (!speakerWork){
+    digitalWrite(speaker, LOW);
+  }
   
   // Работа с ИК датчиком
   if (IrReceiver.decode()) {
-
-        //IrReceiver.printIRResultShort(&Serial);
-
+    // Пульт кнопки
+    // 0x45 0x46 0x47
+    // 0x44 0x40 0x43
+    // 0x7 0x15 0x9
+    // 0x16 0x19 0xD
+    // 0xC 0x18 0x5E
+    // 0x8 0x1C 0x5A
+    // 0x42 0x52 0x4A
+        IrReceiver.printIRResultShort(&Serial);
         IrReceiver.resume(); 
-        
-        if (IrReceiver.decodedIRData.command == 0xC) {
-            trm12 = millis();
-            backFlak = true;
-        } else if (IrReceiver.decodedIRData.command == 0x18) {
-            trm12 = millis();
-            rightFlak = true;
-        } else if (IrReceiver.decodedIRData.command == 0x5E) {
-            trm12 = millis();
-            leftFlak = true;
-        } else if (IrReceiver.decodedIRData.command == 0x16) {
-            trm12 = millis();
-            forvardFlak = true;
-        } else if (IrReceiver.decodedIRData.command == 0x9) {
+        switch (IrReceiver.decodedIRData.command)
+        {
+        case 0x15:
+          if (speed < 250){
+            speed = speed + 10;
+          }
+          break;
+        case 0x7:
+          if (speed > 0 ){
+            speed = speed - 10;
+          }
+          break;
+        case 0x52:
+          trm12 = millis();
+          backFlak = true;
+          break;
+
+        case 0x8:
+          trm12 = millis();
+          rightFlak = true;
+          break;
+          
+        case 0x5A:
+          trm12 = millis();
+          leftFlak = true;
+          break;
+
+        case 0x18:
+          trm12 = millis();
+          forvardFlak = true;
+          break;
+        case 0x9:
+          speakerWork = !speakerWork;
+          break;
+        case 0x43:
           if (stopFlak && millis() - trm13 >= 200){
             trm13 = millis();
             stopFlak = false;
           }else{
             stopFlak = true;
-          }
-            
+          } 
+          break;
+
+        default:
+          break;
         }
     }
+
 if (stopFlak){
     startFlak = true;
     rightWheel.speed(0);
@@ -225,15 +274,15 @@ if (stopFlak){
   } 
 
 else if(startFlak){
-    rightWheel.speed(100);
-    leftWheel.speed(100);
+    rightWheel.speed(speed);
+    leftWheel.speed(speed);
     startFlak = false;
   }
   
   if (backFlak){
     if (millis() - trm12 <= 100){
-      rightWheel.speed(100);
-      leftWheel.speed(100);
+      rightWheel.speed(speed);
+      leftWheel.speed(speed);
       back();
     }else{
       forvard();
@@ -244,8 +293,8 @@ else if(startFlak){
   
   if (forvardFlak){
     if (millis() - trm12 <= 100){
-      rightWheel.speed(100);
-      leftWheel.speed(100);
+      rightWheel.speed(speed);
+      leftWheel.speed(speed);
       forvard();
     }else{
       forvard();
@@ -256,8 +305,8 @@ else if(startFlak){
   
   if (leftFlak){
     if (millis() - trm12 <= 100){
-      rightWheel.speed(100);
-      leftWheel.speed(100);
+      rightWheel.speed(speed);
+      leftWheel.speed(speed);
       leftG();
     }else{
       forvard();
@@ -268,8 +317,8 @@ else if(startFlak){
 
   if (rightFlak){
     if (millis() - trm12 <= 100){
-      rightWheel.speed(100);
-      leftWheel.speed(100);
+      rightWheel.speed(speed);
+      leftWheel.speed(speed);
       rightG();
     }else{
       forvard();
