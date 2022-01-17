@@ -7,7 +7,7 @@
 #define fotoRez A3
 #define speaker A2
 #define dat A1
-#define tax1 4
+#define tax1 1
 #define tax2 8
 
 // Значение "яркости" при котором робот останавливается

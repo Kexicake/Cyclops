@@ -1,5 +1,5 @@
 // Определения всех портов находятся в отдельном файле
-#include "definitions.h"
+#include "Definitions.h"
 
 // библиотека управления ИК датчиком (Ссылку надо указать)
 #include <IRremote.hpp>
