@@ -1,7 +1,7 @@
 // Определения всех портов находятся в отдельном файле
 #include "definitions.h"
 
-// библиотека управления ИК датчиком
+// библиотека управления ИК датчиком (Ссылку надо указать)
 #include <IRremote.hpp>
 
 // Небольшой класс, для удобной работы с двигателями
@@ -10,13 +10,24 @@
 motor rightWheel(1);// low - вперёд high - назад
 motor leftWheel(0);// low - назад high - вперёд
 
+#include <SPI.h>          // библиотека для работы с шиной SPI
+#include "nRF24L01.h"     // библиотека радиомодуля
+#include "RF24.h"         // ещё библиотека радиомодуля
+
+RF24 radio(9, 10); // "создать" модуль на пинах 9 и 10 Для Уно
+//RF24 radio(9,53); // для Меги
+
+byte address[][6] = {"1Node", "2Node", "3Node", "4Node", "5Node", "6Node"}; //возможные номера труб
+
+
+
 int lastAA = -1;
 
 // Общее значение яркости в помещении на момент включения
 int dark;
 
 //  я хз
-bool fl = true, povFL = true, flfl = false;
+bool fl = true, povFL = true, flfl = false, fl2 = true;
 
 //  
 uint32_t counterTurnovers = 0;
@@ -26,11 +37,31 @@ uint32_t speakerTime = -1, ttime = 0;
 void setup() {
 
   // Открытие серийного порта
-  Serial.begin(115200);
+  Serial.begin(9600);
+if (!radio.begin()) {
+    Serial.println(F("radio hardware is not responding!!"));
+    while (1) {} // hold in infinite loop
+  }
+ radio.begin();              // активировать модуль
+  radio.setAutoAck(1);        // режим подтверждения приёма, 1 вкл 0 выкл
+  radio.setRetries(0, 15);    // (время между попыткой достучаться, число попыток)
+  radio.enableAckPayload();   // разрешить отсылку данных в ответ на входящий сигнал
+  radio.setPayloadSize(1);   // размер пакета, в байтах
+
+  radio.openWritingPipe(address[0]);  // мы - труба 0, открываем канал для передачи данных
+  radio.openReadingPipe(1, address[1]);
+
+  radio.powerUp();        // начать работу
+  radio.printDetails();
+
+  radio.setChannel(0x65);
+
+  radio.stopListening();
 
   // Запуск отбработчика ик сигнала
   IrReceiver.begin(IR_RECEIVE_PIN, DISABLE_LED_FEEDBACK, FEEDBACK_LED_PIN);
   
+ 
   // Бинд всех портов  
   pinMode(fotoRez,INPUT_PULLUP);
   pinMode(speaker, OUTPUT);
@@ -62,8 +93,8 @@ uint32_t trm13 = 0;
 
 // переделать
 bool backFlak = false, forvardFlak = false, leftFlak = false, rightFlak = false, stopFlak = true, startFlak = true, help = false;;
-
 void loop() {
+
   // Яркость вокруг в данный момент времени
   int AA = analogRead(fotoRez);
 
@@ -81,21 +112,23 @@ void loop() {
         if (povFL){
             counterTurnovers++;
             povFL = false;
-          }
-          
+        }
+
+        fl = false;
+        
         rightWheel.speed(100);
         leftWheel.speed(100);
         
       }else{
         //Serial.println("non"); 
-        if(!fl){
+        // if(!fl){
           rightWheel.speed(0);
           leftWheel.speed(0);
           rightWheel.go();
           leftWheel.go(); 
           digitalWrite(speaker,HIGH);
           speakerTime = millis();
-        }
+        // }
         
         // Если темно - крутимся, чтобы найти свет
         if(counterTurnovers % 4 == 1 || counterTurnovers % 4 == 2){
@@ -129,26 +162,32 @@ if (rig){
 }else{
     if (flfl){
       flfl = false;
-      Serial.println(60000/(millis()-ttime));
+      byte ob = 15000/(millis()-ttime);
+      if(radio.write(&ob, 1)){
+        Serial.println("pass");
+      }
+      Serial.println(ob);
       ttime = millis();
     }
 }
 
 // Если колесо не крутится, едем назад 
-if (millis()-ttime > 500){
+if (millis()-ttime > 400){
       t = millis();
       help = true;
       ttime = millis();
 }
 
-if (millis() - t < 100){
+if (millis() - t < 250){
   back();
 }
-
+if (millis() - t < 500 && millis() - t > 250){
+  leftG();
+}
   // Пищалка пищит пол секунды и перестаёт
-  if (millis() - speakerTime > 500){
+  if (millis() - speakerTime > 100){
     digitalWrite(speaker,LOW);
-  }
+  } 
   
   // Работа с ИК датчиком
   if (IrReceiver.decode()) {
