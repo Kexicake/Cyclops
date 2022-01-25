@@ -4,11 +4,24 @@
 #define FEEDBACK_LED_PIN 0
 
 // Определение портов датчиков
-#define fotoRez A3
-#define speaker A2
+#define PHOTORES_PIN A3
+#define SPEAKER_PIN A4
 #define dat A1
-#define tax1 1
-#define tax2 8
+#define TACHOMETER_PIN 1
+#define CE_RADIO_PIN 9
+#define CSN_RADIO_PIN 10
+// Не работает татчик, исправить
+#define tax2 8 
+
+// Адреса труб радио модуля
+byte address[][6] = {"1Node", "2Node", "3Node", "4Node", "5Node", "6Node"};
 
 // Значение "яркости" при котором робот останавливается
 #define maxBrightness 40
+
+// Пины двигателей
+#define SPEED_1      5 
+#define DIR_1        4
+ 
+#define SPEED_2      6
+#define DIR_2        7

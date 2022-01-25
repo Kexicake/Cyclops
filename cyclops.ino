@@ -1,18 +1,5 @@
-// Кодировка данных, принимаемых ИК датчиком
-#define DECODE_NEC 
-#define IR_RECEIVE_PIN 2
-#define FEEDBACK_LED_PIN 0
-
-// Определение портов датчиков
-#define fotoRez A3
-#define speaker A4
-#define dat A1
-#define tax1 1
-// Не работает татчик, исправить
-#define tax2 8 
-
-// Значение "яркости" при котором робот останавливается
-#define maxBrightness 40
+// Все пины и определения вынесенны в отдельный файл
+#include "definitions.h"
 
 // библиотека управления ИК датчиком 
 #include <IRremote.hpp>
@@ -20,8 +7,8 @@
 // Небольшой класс, для удобной работы с двигателями
 #include "motor.h"
 
-motor rightWheel(1);// low - вперёд high - назад
-motor leftWheel(0);// low - назад high - вперёд
+motor rightWheel(DIR_2, SPEED_2);// low - вперёд high - назад
+motor leftWheel(DIR_1, SPEED_1);// low - назад high - вперёд
 
 // библиотека для работы с шиной SPI
 #include <SPI.h>
@@ -30,11 +17,8 @@ motor leftWheel(0);// low - назад high - вперёд
 #include "nRF24L01.h"     
 #include "RF24.h"               
 
-// Создания экземпляра класса модуля на пинах 9 и 10
-RF24 radio(9, 10);
-
-// возможные номера труб
-byte address[][6] = {"1Node", "2Node", "3Node", "4Node", "5Node", "6Node"};
+// Создания экземпляра класса радио модуля 
+RF24 radio(CE_RADIO_PIN, CSN_RADIO_PIN);
 
 // Массив передоваемой информации передатчиком
 byte data[3]= {0,0,0};  
@@ -43,13 +27,16 @@ byte data[3]= {0,0,0};
 int dark; 
 
 //  флажки для работы глаза и поворотов
-bool fl = true, povFL = true, flfl = false, fl2 = true, speakerWork = true, flfl2 = false;
+bool povFL = true, flfl = false, fl2 = true, speakerWork = true, flfl2 = false;
 
-//  Основные временные пременные
-uint32_t counterTurnovers = 0, lastAA = -1;
-uint32_t speakerTime = -1, ttime = 0, ttime2 = 0;
-uint32_t k = millis(), vrema = millis(), ism = 0, trm12 = 0, t = 0;
-uint32_t trm13 = 0;
+// Переменная, отвечающая за пеменное кручение робота во время нахождения темноты/припятствия
+uint32_t counterTurnovers = 0;
+
+// Последнее обработанное значение яркости поверхности
+uint32_t lastBrightness = -1;
+
+// Основные временные переменные
+uint32_t speakerTime = -1, tachometerTime = 0, IRdriveTime = 0, backTime = 0, startScriptTime = 0;
 
 // Стандартная скорость вращения колёс
 int speed = 100;
@@ -84,138 +71,133 @@ void setup() {
   radio.begin();              // активировать модуль
   radio.setAutoAck(1);        // режим подтверждения приёма, 1 вкл 0 выкл
   radio.setRetries(0, 15);    // (время между попыткой достучаться, число попыток)
+  radio.setChannel(0x65);     // Канал, на котором будет работать датчик
   radio.enableAckPayload();   // разрешить отсылку данных в ответ на входящий сигнал
   radio.setPayloadSize(3);   // размер пакета, в байтах
-
   radio.openWritingPipe(address[0]);  //открываем канал для передачи данных
   radio.openReadingPipe(1, address[1]); // Канал для приём ответа
-  
   radio.powerUp();        // начать работу nRF2401+
-
-  radio.setChannel(0x65);
   
-  radio.stopListening(); // слушать эфир
+  radio.startListening(); // слушать эфир 
 
   // Запуск отбработчика ик сигнала
   IrReceiver.begin(IR_RECEIVE_PIN, DISABLE_LED_FEEDBACK, FEEDBACK_LED_PIN);
   
  
   // Бинд всех портов  
-  pinMode(fotoRez,INPUT_PULLUP);
-  pinMode(dat,INPUT_PULLUP);
-  pinMode(tax1, INPUT_PULLUP);
-  pinMode(tax2, INPUT_PULLUP);
+  pinMode(PHOTORES_PIN,INPUT_PULLUP);
+  // pinMode(dat,INPUT_PULLUP);
+  pinMode(TACHOMETER_PIN, INPUT_PULLUP);
+  // pinMode(tax2, INPUT_PULLUP);
+  pinMode(SPEAKER_PIN, OUTPUT);
 
-  pinMode(speaker, OUTPUT);
   // стоковое колличество "яркости" в комнате (чем больше значение, тем дальше он заедет в темноту)
-  dark = analogRead(fotoRez) + 10;
+  dark = analogRead(PHOTORES_PIN) + 10;
 
   // если слишком ярко, будет пищать спикер
   if(dark < maxBrightness){
     while(true){
       for(int i = 1; i <= 6; i++){
-        digitalWrite(speaker,bool(i/2));
+        digitalWrite(SPEAKER_PIN,bool(i/2));
         delay(250);
       }
       delay(3000);
     }
   }
-  digitalWrite(speaker,LOW);
+  digitalWrite(SPEAKER_PIN,LOW);
 }
 
 void loop() {
 
   // Яркость вокруг в данный момент времени
-  int AA = analogRead(fotoRez);
+  int brightness = analogRead(PHOTORES_PIN);
 
-  // Работаем со значениями только с dAA большем 7
-  if (AA != lastAA && abs(AA - lastAA) > 7){
+  // Работаем с изменением яркости больше 7
+  if (brightness != lastBrightness && abs(brightness - lastBrightness) > 7){
 
-    lastAA = AA;
-    //Serial.println(AA);
-    
-       
-      if (dark > AA){
-        // Если светло - едем к свету
+    lastBrightness = brightness;
+
+    //Serial.println(brightness);
+
+      // Если светло - едем к свету, иначе - крутимся
+      if (dark > brightness){
+        // Едем вперёд
         forvard();
         
+        // Это условие отвечает за переменное вращение в разные стороны при поиске света
         if (povFL){
             counterTurnovers++;
             povFL = false;
         }
-
-        fl = false;
-        
         rightWheel.speed(speed);
         leftWheel.speed(speed);
-        
       }else{
           rightWheel.speed(0);
           leftWheel.speed(0);
           rightWheel.go();
           leftWheel.go(); 
+          // Это условие отвечает за работу спикера, который пищит, если мы натыкаемся наприпятствие
           if (speakerWork){
-            digitalWrite(speaker,HIGH);
+            digitalWrite(SPEAKER_PIN,HIGH);
           }
-          
           speakerTime = millis();
+          
         // Если темно - крутимся, чтобы найти свет
         if(counterTurnovers % 4 == 1 || counterTurnovers % 4 == 2){
           leftG();
           povFL = true;
-        }else if (counterTurnovers % 4 == 3 || counterTurnovers % 4 == 0){
+        }else if{
           rightG();
           povFL = true;
         }
+        // Обнуляем переменную, чтобы она не занимала место в памяти
         if (counterTurnovers == 4){
           counterTurnovers = 0;
         }
         rightWheel.speed(speed - 40);
         leftWheel.speed(speed - 40);
-        fl = true;
       }
     
   }
 
   // Если "яркость" на придельном значении и больше мы будем стоять (Банально чтобы не снести лампочку) 
-  if (AA < maxBrightness){
+  if (brightness < maxBrightness){
       rightWheel.speed(0);
       leftWheel.speed(0);
   } 
 
 // Кусок код отвечающий за работу тахометров
-bool ta1 = digitalRead(tax1), ta2 = digitalRead(tax2); 
+bool ta1 = digitalRead(TACHOMETER_PIN), ta2 = digitalRead(tax2); 
 
 if (ta1){
     flfl = true;
 }else{
     if (flfl){
       flfl = false;
-      data[2] = 15000/(millis()-ttime);
+      data[2] = 15000/(millis()-tachometerTime);
       // radio.write(&ob, 1);
-      ttime = millis();
+      tachometerTime = millis();
     }
 }
-if (ta2){
-    flfl2 = true;
-}else{
-    if (flfl2){
-      flfl2 = false;
-      data[3] =  15000/(millis()-ttime2);
-      // radio.write(&ob, 1);
-      ttime2 = millis();
-    }
-}
+// if (ta2){
+//     flfl2 = true;
+// }else{
+//     if (flfl2){
+//       flfl2 = false;
+//       data[3] =  15000/(millis()-ttime2);
+//       // radio.write(&ob, 1);
+//       ttime2 = millis();
+//     }
+// }
 // Если колесо не крутится, едем назад ~256мс надо чтобы определить крутится ли колесо
-if (millis() - ttime > 300){
-      t = millis();
-      ttime = millis();
-      ttime2 = millis();
+if (millis() - tachometerTime > 300){
+      backTime = millis();
+      tachometerTime = millis();
 }
 
 // ОБработка остановки колёс
-if (millis() - t < 500){
-  if (millis() - t > 250){
+if (millis() - backTime < 500){
+  if (millis() - backTime > 250){
     leftG();
   }else{
     back();
@@ -224,9 +206,9 @@ if (millis() - t < 500){
 
   // Пищалка пищит 1/10 секунды и перестаёт
   if ((millis() - speakerTime) >= 100 && speakerWork){
-    digitalWrite(speaker,LOW);
+    digitalWrite(SPEAKER_PIN,LOW);
   } else if (!speakerWork){
-    digitalWrite(speaker, LOW);
+    digitalWrite(SPEAKER_PIN, LOW);
   }
   
   // Работа с ИК датчиком
@@ -254,30 +236,30 @@ if (IrReceiver.decode()) {
           }
           break;
         case 0x52:
-          trm12 = millis();
+          IRdriveTime = millis();
           backFlak = true;
           break;
 
         case 0x8:
-          trm12 = millis();
+          IRdriveTime = millis();
           rightFlak = true;
           break;
           
         case 0x5A:
-          trm12 = millis();
+          IRdriveTime = millis();
           leftFlak = true;
           break;
 
         case 0x18:
-          trm12 = millis();
+          IRdriveTime = millis();
           forvardFlak = true;
           break;
         case 0x9:
           speakerWork = !speakerWork;
           break;
         case 0x43:
-          if (stopFlak && millis() - trm13 >= 200){
-            trm13 = millis();
+          if (stopFlak && millis() - startScriptTime >= 200){
+            startScriptTime = millis();
             stopFlak = false;
           }else{
             stopFlak = true;
@@ -301,7 +283,7 @@ else if(startFlak){
   }
   
   if (backFlak){
-    if (millis() - trm12 <= 100){
+    if (millis() - IRdriveTime <= 100){
       rightWheel.speed(speed);
       leftWheel.speed(speed);
       back();
@@ -313,7 +295,7 @@ else if(startFlak){
   }
   
   if (forvardFlak){
-    if (millis() - trm12 <= 100){
+    if (millis() - IRdriveTime <= 100){
       rightWheel.speed(speed);
       leftWheel.speed(speed);
       forvard();
@@ -325,7 +307,7 @@ else if(startFlak){
   }
   
   if (leftFlak){
-    if (millis() - trm12 <= 100){
+    if (millis() - IRdriveTime <= 100){
       rightWheel.speed(speed);
       leftWheel.speed(speed);
       leftG();
@@ -337,7 +319,7 @@ else if(startFlak){
   }
 
   if (rightFlak){
-    if (millis() - trm12 <= 100){
+    if (millis() - IRdriveTime <= 100){
       rightWheel.speed(speed);
       leftWheel.speed(speed);
       rightG();
@@ -349,11 +331,7 @@ else if(startFlak){
   }
   
   // Функция отправки информации  
-  
-     
-  // radio.startListening();
-  // Крутим колёса
-
+  radio.stopListening();
   if(!radio.write(&data, 3)){
     Serial.print(data[0]);
     Serial.print(" ");
@@ -361,6 +339,9 @@ else if(startFlak){
     Serial.print(" ");
     Serial.println(data[2]);
   }
+  radio.startListening();
+
+  // Крутим колёса
   rightWheel.go();
   leftWheel.go(); 
 }
