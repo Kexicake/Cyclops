@@ -7,8 +7,8 @@
 // Небольшой класс, для удобной работы с двигателями
 #include "motor.h"
 // Создания экземпляров класса работы с колёсами 
-motor rightWheel(DIR_2, SPEED_2);// low - вперёд high - назад
-motor leftWheel(DIR_1, SPEED_1);// low - назад high - вперёд
+motor rightWheel(1);// low - вперёд high - назад
+motor leftWheel(0);// low - назад high - вперёд
 
 // библиотека для работы с шиной SPI
 #include <SPI.h>
@@ -37,7 +37,7 @@ uint32_t lastBrightness = -1;
 
 // Основные временные переменные
 uint32_t speakerTime = -1, tachometerTime = 0, IRdriveTime = 0, backTime = 0, startScriptTime = 0;
-
+uint32_t test = -1;
 // Стандартная скорость вращения колёс
 int speed = 100;
 
@@ -90,7 +90,10 @@ void setup() {
   pinMode(TACHOMETER_PIN, INPUT_PULLUP);
   // pinMode(tax2, INPUT_PULLUP);
   pinMode(SPEAKER_PIN, OUTPUT);
-
+  
+  // Иначе начинается бесконечная перезагрузка
+  digitalWrite(RESTART_PIN,1);
+  pinMode(RESTART_PIN, OUTPUT);
   // стоковое колличество "яркости" в комнате (чем больше значение, тем дальше он заедет в темноту)
   dark = analogRead(PHOTORES_PIN) + 10;
 
@@ -108,7 +111,7 @@ void setup() {
 }
 
 void loop() {
-
+if(!stopFlak){
   // Яркость вокруг в данный момент времени
   int brightness = analogRead(PHOTORES_PIN);
 
@@ -146,7 +149,7 @@ void loop() {
         if(counterTurnovers % 4 == 1 || counterTurnovers % 4 == 2){
           leftG();
           povFL = true;
-        }else if{
+        }else{
           rightG();
           povFL = true;
         }
@@ -210,7 +213,7 @@ if (millis() - backTime < 500){
   } else if (!speakerWork){
     digitalWrite(SPEAKER_PIN, LOW);
   }
-  
+}
   // Работа с ИК датчиком
 if (IrReceiver.decode()) {
     // Пульт кнопки
@@ -265,6 +268,12 @@ if (IrReceiver.decode()) {
             stopFlak = true;
           } 
           break;
+        case 0x46:
+          dark = analogRead(PHOTORES_PIN) + 10;
+          break;
+        case 0x16:
+          digitalWrite(RESTART_PIN,0);
+          break;
         default:
           break;
         }
@@ -272,6 +281,7 @@ if (IrReceiver.decode()) {
 
 if (stopFlak){
     startFlak = true;
+    digitalWrite(SPEAKER_PIN,LOW);
     rightWheel.speed(0);
     leftWheel.speed(0);
   } 
@@ -332,13 +342,7 @@ else if(startFlak){
   
   // Функция отправки информации  
   radio.stopListening();
-  if(!radio.write(&data, 3)){
-    Serial.print(data[0]);
-    Serial.print(" ");
-    Serial.print(data[1]);
-    Serial.print(" ");
-    Serial.println(data[2]);
-  }
+  radio.write(&data, 3);
   radio.startListening();
 
   // Крутим колёса
