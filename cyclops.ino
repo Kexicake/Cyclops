@@ -6,7 +6,7 @@
 
 // Небольшой класс, для удобной работы с двигателями
 #include "motor.h"
-
+// Создания экземпляров класса работы с колёсами 
 motor rightWheel(DIR_2, SPEED_2);// low - вперёд high - назад
 motor leftWheel(DIR_1, SPEED_1);// low - назад high - вперёд
 
