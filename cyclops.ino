@@ -21,7 +21,7 @@ motor leftWheel(0);// low - назад high - вперёд
 RF24 radio(CE_RADIO_PIN, CSN_RADIO_PIN);
 
 // Массив передоваемой информации передатчиком
-byte data[3]= {0,0,0};  
+int data[3]= {0,0,0};  
  
 // Общее значение яркости в помещении на момент включения
 int dark; 
@@ -78,7 +78,7 @@ void setup() {
   radio.openReadingPipe(1, address[1]); // Канал для приём ответа
   radio.powerUp();        // начать работу nRF2401+
   
-  radio.startListening(); // слушать эфир 
+  radio.stopListening(); // слушать эфир 
 
   // Запуск отбработчика ик сигнала
   IrReceiver.begin(IR_RECEIVE_PIN, DISABLE_LED_FEEDBACK, FEEDBACK_LED_PIN);
@@ -199,8 +199,8 @@ if (millis() - tachometerTime > 300){
 }
 
 // ОБработка остановки колёс
-if (millis() - backTime < 500){
-  if (millis() - backTime > 250){
+if (millis() - backTime < 1000){
+  if (millis() - backTime > 700){
     leftG();
   }else{
     back();
@@ -224,7 +224,7 @@ if (IrReceiver.decode()) {
     // 0xC 0x18 0x5E
     // 0x8 0x1C 0x5A
     // 0x42 0x52 0x4A
-        IrReceiver.printIRResultShort(&Serial);
+    // IrReceiver.printIRResultShort(&Serial);
         IrReceiver.resume(); 
         switch (IrReceiver.decodedIRData.command)
         {
@@ -341,9 +341,7 @@ else if(startFlak){
   }
   
   // Функция отправки информации  
-  radio.stopListening();
   radio.write(&data, 3);
-  radio.startListening();
 
   // Крутим колёса
   rightWheel.go();
