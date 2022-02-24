@@ -18,7 +18,7 @@ byte address[][6] = {"1Node", "2Node", "3Node", "4Node", "5Node", "6Node"};
 
 // Значение "яркости" при котором робот останавливается
 #define maxBrightness 40
-
+#define deltaBrightness 7
 // Пины двигателей
 #define SPEED_1      5 
 #define DIR_1        4

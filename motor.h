@@ -11,25 +11,27 @@
 // Пин направления второго двигателя - 7
 class motor {
   public:
-    motor (byte direction, byte speed) {
+    motor (int direction, int speed) {
       _direction = direction;
       _speed = speed;  
       pinMode(_direction, OUTPUT);
       pinMode(_speedControl,OUTPUT);
     }
-    motor (bool i){
-      if (!i){
-        _direction = DIR_1;
-        _speedControl = SPEED_1;  
-        pinMode(_direction, OUTPUT);
-        pinMode(_speedControl,OUTPUT);
-      }else{
-        _direction = DIR_2;
-        _speedControl = SPEED_2;  
-        pinMode(_direction, OUTPUT);
-        pinMode(_speedControl,OUTPUT);
-      }
-    }
+    // motor (bool i) : (i)?motor(DIR_2,SPEED_2):motor(DIR_1,SPEED_1){
+    //   // if (!i){
+    //   //   motor(DIR_1,SPEED_1);
+    //   //   // _direction = DIR_1;
+    //   //   // _speedControl = SPEED_1;  
+    //   //   // pinMode(_direction, OUTPUT);
+    //   //   // pinMode(_speedControl,OUTPUT);
+    //   // }else{
+    //   //   motor(DIR_2,SPEED_2);
+    //   //   // _direction = DIR_2;
+    //   //   // _speedControl = SPEED_2;  
+    //   //   // pinMode(_direction, OUTPUT);
+    //   //   // pinMode(_speedControl,OUTPUT);
+    //   // }
+    // }
     
     void speed(int speed){
       _speed = speed;
@@ -40,7 +42,9 @@ class motor {
     void go(){
       analogWrite(_speedControl, _speed);
     }
-
+    void stop(){
+      analogWrite(_speedControl, 0);
+    }
     //Типо когда нажимаешь или удерживаешь возвращаеться True
   private:
     byte _direction;
