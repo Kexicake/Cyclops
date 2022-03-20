@@ -10,7 +10,7 @@
 #define TACHOMETER_PIN 8
 #define CE_RADIO_PIN 9
 #define CSN_RADIO_PIN 10
-// Не работает татчик, исправить
+// Не работает датчик, исправить
 #define tax2 1 
 #define RESTART_PIN A0
 // Адреса труб радио модуля

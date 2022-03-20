@@ -14,6 +14,9 @@ motor leftWheel(DIR_1,SPEED_1);// low - назад high - вперёд
 // Общее значение яркости в помещении на момент включения
 int dark = analogRead(PHOTORES_PIN) + 10;
 
+// Показания с тахометров
+int data[3] = {};
+
 // Флажки для работы глаза и поворотов
 bool turnFL = true, tax1FL = false, speakerFL = true, tax2FL = false;
 
@@ -137,14 +140,13 @@ void moveControl(){
       if (turnFL && !(turnFL = !turnFL)) 
         counterTurnovers++;
       speedW(speed);
-
     }else{
-        stop();
+      stop();
 
-        // Это условие отвечает за работу спикера, который пищит, если мы натыкаемся наприпятствие
-        if (speakerFL)
-          digitalWrite(SPEAKER_PIN,HIGH);
-        speakerTime = millis();
+      // Это условие отвечает за работу спикера, который пищит, если мы натыкаемся наприпятствие
+      if (speakerFL)
+        digitalWrite(SPEAKER_PIN,HIGH);
+      speakerTime = millis();
         
       // Если темно - крутимся, чтобы найти свет
       if(counterTurnovers % 4 == 1 || counterTurnovers % 4 == 2){
@@ -154,6 +156,7 @@ void moveControl(){
         rightG();
         turnFL = true;
       }
+
       // Обнуляем переменную, чтобы она не перегружалась
       if (counterTurnovers == 4)
         counterTurnovers = 0;
@@ -314,7 +317,8 @@ void setup() {
 }
 
 void loop() {
-  if(!stopFlak) moveControl();
+  if(!stopFlak) 
+    moveControl();
 
   // Получение информации с пульта, при помощи ИК датчика
   if (IrReceiver.decode()) {
